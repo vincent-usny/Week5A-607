@@ -1,0 +1,86 @@
+---
+title: "Week_5A"
+author: "Haoming Chen"
+date: "2025-09-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+## Introduction
+
+This analysis compare performance of Alaska and Am West airlines across five cities: Los Angeles, Phoenix, San Diego, San Francisco and Seattle. The dataset is tidied from a wide format into a long format.
+
+```{r long_table}
+al <- read.csv('https://raw.githubusercontent.com/vincent-usny/Week5A-607/refs/heads/main/airline.csv', header = FALSE, stringsAsFactors = FALSE)
+
+# manually reorganize data. Remove null.
+al_df <- data.frame(
+  airline = c('ALASKA','ALASKA','AM WEST','AM WEST'),
+  status = c('on_time','delayed','on_time','delayed'),
+  Los_Angeles = c(497, 62, 694, 117),
+  Phoenix = c(221, 12, 4840, 415),
+  San_Diego = c(212, 20, 383, 65),
+  San_Francisco = c(503, 102, 320, 129),
+  Seattle = c(1841, 305, 201, 61)
+)
+al_df
+
+al_long <- al_df %>%
+  pivot_longer(
+    cols = Los_Angeles:Seattle,
+    names_to = 'City',
+    values_to = 'Count'
+  )
+al_long
+```
+
+```{r}
+# create a table for percent of delayed or on time
+# for both airlines
+percent_table <- al_long %>%
+  group_by(airline, status) %>%
+  summarise(total = sum(Count)) %>%
+  pivot_wider(names_from = status, values_from = total) %>%
+  mutate(
+    percent_delayed = delayed / (delayed + on_time) * 100,
+    percent_ontime = on_time /(delayed + on_time)* 100
+  )
+percent_table
+```
+```{r plot}
+# plot for comparison of both airlines
+ggplot(data = percent_table, aes(x = airline, y = percent_delayed, fill = airline)) + geom_bar(stat = 'identity', width = 0.5) + ylab('percent_delayed') + xlab('Airline') + ggtitle('Percent Delayed by Airlines')
+
+# Overall, AM West performed slightly better than Alaska
+# with a lower delay rate, which suggests Am west is more
+# reliable.
+```
+```{r}
+# Plot for comparison of both airlines across cities
+city_percent <- al_long %>%
+  group_by(airline, status, City) %>%
+  summarise(total = sum(Count), .group = 'drop') %>%
+  pivot_wider(
+    names_from = status,
+    values_from = total
+  ) %>%
+  mutate(percent_city_delayed = delayed / (delayed + on_time))
+  city_percent
+
+# Both airlines perform best in Phoenix. SF and Seattle 
+# are worst for both, while AM is higher that Alaska
+# (28.7% and 23.3%) vs (16.9% and 14.2%).
+# Overall, AM is slightly better on average, but Alaska
+# has lower delayed rate across cities.
+```
+
+```{r}
+ggplot(city_percent, aes(x = City, y = percent_city_delayed, fill = airline)) + geom_bar(stat = 'identity', position = 'dodge', width = 0.7) + ylab('percent_city_delayed') + xlab('City')+ ggtitle('Percent Delayed Across Cities')
+```
+
+## Conclusion
+
+Although Am West performs slightly better than Alaska on average, Alaska has lower delayed rate on each destination individually, especially SF and Seattle. However, in this dataset, the sample size of Alaska is only 3775 while Am West is 7225. More data is needed for Alaska in order to compare more fairly.  
